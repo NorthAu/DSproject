@@ -14,8 +14,7 @@ public class TextbookService {
         this.textbookDao = textbookDao;
     }
 
-    public Textbook create(Textbook textbook) {
-        validate(textbook);
+    public Textbook add(Textbook textbook) {
         try {
             return textbookDao.save(textbook);
         } catch (SQLException e) {
@@ -24,10 +23,6 @@ public class TextbookService {
     }
 
     public Textbook update(Textbook textbook) {
-        if (textbook.getId() == null) {
-            throw new IllegalArgumentException("修改前请先选择要更新的教材");
-        }
-        validate(textbook);
         try {
             return textbookDao.update(textbook);
         } catch (SQLException e) {
@@ -57,19 +52,5 @@ public class TextbookService {
         } catch (SQLException e) {
             throw new RuntimeException("无法按ID查询教材", e);
         }
-    }
-
-    private void validate(Textbook textbook) {
-        if (isBlank(textbook.getTitle()) || isBlank(textbook.getAuthor())
-                || isBlank(textbook.getPublisher()) || isBlank(textbook.getIsbn())) {
-            throw new IllegalArgumentException("书名、作者、出版社、ISBN 均不能为空");
-        }
-        if (textbook.getStock() < 0) {
-            throw new IllegalArgumentException("库存必须大于等于 0");
-        }
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 }
