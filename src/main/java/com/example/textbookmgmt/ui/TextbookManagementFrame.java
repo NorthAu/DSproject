@@ -1,7 +1,11 @@
 package com.example.textbookmgmt.ui;
 
 import com.example.textbookmgmt.entity.Textbook;
+import com.example.textbookmgmt.service.InventoryService;
+import com.example.textbookmgmt.service.PublisherService;
+import com.example.textbookmgmt.service.TextbookOrderService;
 import com.example.textbookmgmt.service.TextbookService;
+import com.example.textbookmgmt.service.TextbookTypeService;
 import com.example.textbookmgmt.ui.model.TextbookTableModel;
 
 import javax.swing.*;
@@ -11,14 +15,26 @@ import java.util.List;
 
 public class TextbookManagementFrame extends JFrame {
     private final TextbookService textbookService;
+    private final PublisherService publisherService;
+    private final TextbookTypeService typeService;
+    private final TextbookOrderService orderService;
+    private final InventoryService inventoryService;
     private final TextbookTableModel tableModel = new TextbookTableModel();
     private final JTable table = new JTable(tableModel);
     private final TextbookFormPanel formPanel = new TextbookFormPanel();
     private final JLabel statusLabel = new JLabel();
 
-    public TextbookManagementFrame(TextbookService textbookService) {
+    public TextbookManagementFrame(TextbookService textbookService,
+                                  PublisherService publisherService,
+                                  TextbookTypeService typeService,
+                                  TextbookOrderService orderService,
+                                  InventoryService inventoryService) {
         super("高校教材管理系统");
         this.textbookService = textbookService;
+        this.publisherService = publisherService;
+        this.typeService = typeService;
+        this.orderService = orderService;
+        this.inventoryService = inventoryService;
 
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
@@ -31,11 +47,23 @@ public class TextbookManagementFrame extends JFrame {
         table.setRowHeight(26);
         table.getSelectionModel().addListSelectionListener(e -> onTableSelection());
 
-        add(formPanel, BorderLayout.NORTH);
-        add(createTablePanel(), BorderLayout.CENTER);
+        add(buildTabs(), BorderLayout.CENTER);
         add(createButtonPanel(), BorderLayout.SOUTH);
 
         reloadTable();
+    }
+
+    private JTabbedPane buildTabs() {
+        JTabbedPane tabs = new JTabbedPane();
+        JPanel textbookPanel = new JPanel(new BorderLayout());
+        textbookPanel.add(formPanel, BorderLayout.NORTH);
+        textbookPanel.add(createTablePanel(), BorderLayout.CENTER);
+        tabs.addTab("教材", textbookPanel);
+        tabs.addTab("出版社", new PublisherPanel(publisherService));
+        tabs.addTab("教材类型", new TextbookTypePanel(typeService));
+        tabs.addTab("订购", new OrderPanel(textbookService, orderService));
+        tabs.addTab("入库/领用", new InventoryPanel(textbookService, inventoryService));
+        return tabs;
     }
 
     private JPanel createButtonPanel() {
@@ -135,6 +163,8 @@ public class TextbookManagementFrame extends JFrame {
         List<Textbook> textbooks = textbookService.list();
         tableModel.setData(textbooks);
         updateStatus(textbooks.size());
+        formPanel.setPublisherOptions(publisherService.list());
+        formPanel.setTypeOptions(typeService.list());
     }
 
     private void onTableSelection() {

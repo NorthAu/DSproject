@@ -7,23 +7,27 @@ public class Textbook {
     private String title;
     private String author;
     private String publisher;
+    private Long publisherId;
+    private Long typeId;
     private String isbn;
     private int stock;
 
     public Textbook() {
     }
 
-    public Textbook(Long id, String title, String author, String publisher, String isbn, int stock) {
+    public Textbook(Long id, String title, String author, String publisher, Long publisherId, Long typeId, String isbn, int stock) {
         this.id = id;
         this.title = title;
         this.author = author;
         this.publisher = publisher;
+        this.publisherId = publisherId;
+        this.typeId = typeId;
         this.isbn = isbn;
         this.stock = stock;
     }
 
     public Textbook(String title, String author, String publisher, String isbn, int stock) {
-        this(null, title, author, publisher, isbn, stock);
+        this(null, title, author, publisher, null, null, isbn, stock);
     }
 
     public Long getId() {
@@ -56,6 +60,22 @@ public class Textbook {
 
     public void setPublisher(String publisher) {
         this.publisher = publisher;
+    }
+
+    public Long getPublisherId() {
+        return publisherId;
+    }
+
+    public void setPublisherId(Long publisherId) {
+        this.publisherId = publisherId;
+    }
+
+    public Long getTypeId() {
+        return typeId;
+    }
+
+    public void setTypeId(Long typeId) {
+        this.typeId = typeId;
     }
 
     public String getIsbn() {

@@ -6,9 +6,11 @@ import com.example.textbookmgmt.entity.Textbook;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 public class TextbookService {
     private final TextbookDao textbookDao;
+    private static final Pattern ISBN_PATTERN = Pattern.compile("^ISBN\\d{10}$");
 
     public TextbookService(TextbookDao textbookDao) {
         this.textbookDao = textbookDao;
@@ -66,6 +68,9 @@ public class TextbookService {
         }
         if (textbook.getStock() < 0) {
             throw new IllegalArgumentException("库存必须大于等于 0");
+        }
+        if (!ISBN_PATTERN.matcher(textbook.getIsbn()).matches()) {
+            throw new IllegalArgumentException("ISBN 格式必须以ISBN开头，后跟10位数字，例如：ISBN1234567890");
         }
     }
 

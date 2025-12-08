@@ -12,14 +12,24 @@ public class JdbcTextbookDao implements TextbookDao {
 
     @Override
     public Textbook save(Textbook textbook) throws SQLException {
-        String sql = "INSERT INTO textbooks(title, author, publisher, isbn, stock) VALUES(?,?,?,?,?)";
+        String sql = "INSERT INTO textbooks(title, author, publisher, publisher_id, type_id, isbn, stock) VALUES(?,?,?,?,?,?,?)";
         try (Connection conn = DatabaseUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, textbook.getTitle());
             ps.setString(2, textbook.getAuthor());
             ps.setString(3, textbook.getPublisher());
-            ps.setString(4, textbook.getIsbn());
-            ps.setInt(5, textbook.getStock());
+            if (textbook.getPublisherId() == null) {
+                ps.setNull(4, Types.BIGINT);
+            } else {
+                ps.setLong(4, textbook.getPublisherId());
+            }
+            if (textbook.getTypeId() == null) {
+                ps.setNull(5, Types.BIGINT);
+            } else {
+                ps.setLong(5, textbook.getTypeId());
+            }
+            ps.setString(6, textbook.getIsbn());
+            ps.setInt(7, textbook.getStock());
             ps.executeUpdate();
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
@@ -32,15 +42,25 @@ public class JdbcTextbookDao implements TextbookDao {
 
     @Override
     public Textbook update(Textbook textbook) throws SQLException {
-        String sql = "UPDATE textbooks SET title=?, author=?, publisher=?, isbn=?, stock=? WHERE id=?";
+        String sql = "UPDATE textbooks SET title=?, author=?, publisher=?, publisher_id=?, type_id=?, isbn=?, stock=? WHERE id=?";
         try (Connection conn = DatabaseUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, textbook.getTitle());
             ps.setString(2, textbook.getAuthor());
             ps.setString(3, textbook.getPublisher());
-            ps.setString(4, textbook.getIsbn());
-            ps.setInt(5, textbook.getStock());
-            ps.setLong(6, textbook.getId());
+            if (textbook.getPublisherId() == null) {
+                ps.setNull(4, Types.BIGINT);
+            } else {
+                ps.setLong(4, textbook.getPublisherId());
+            }
+            if (textbook.getTypeId() == null) {
+                ps.setNull(5, Types.BIGINT);
+            } else {
+                ps.setLong(5, textbook.getTypeId());
+            }
+            ps.setString(6, textbook.getIsbn());
+            ps.setInt(7, textbook.getStock());
+            ps.setLong(8, textbook.getId());
             ps.executeUpdate();
             return textbook;
         }
@@ -58,7 +78,7 @@ public class JdbcTextbookDao implements TextbookDao {
 
     @Override
     public Optional<Textbook> findById(long id) throws SQLException {
-        String sql = "SELECT id, title, author, publisher, isbn, stock FROM textbooks WHERE id=?";
+        String sql = "SELECT id, title, author, publisher, publisher_id, type_id, isbn, stock FROM textbooks WHERE id=?";
         try (Connection conn = DatabaseUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
@@ -73,7 +93,7 @@ public class JdbcTextbookDao implements TextbookDao {
 
     @Override
     public List<Textbook> findAll() throws SQLException {
-        String sql = "SELECT id, title, author, publisher, isbn, stock FROM textbooks ORDER BY id DESC";
+        String sql = "SELECT id, title, author, publisher, publisher_id, type_id, isbn, stock FROM textbooks ORDER BY id DESC";
         List<Textbook> textbooks = new ArrayList<>();
         try (Connection conn = DatabaseUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -91,6 +111,8 @@ public class JdbcTextbookDao implements TextbookDao {
                 rs.getString("title"),
                 rs.getString("author"),
                 rs.getString("publisher"),
+                rs.getObject("publisher_id", Long.class),
+                rs.getObject("type_id", Long.class),
                 rs.getString("isbn"),
                 rs.getInt("stock")
         );

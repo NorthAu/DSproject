@@ -5,8 +5,9 @@
 ## 主要特性
 - 默认使用 H2 内存数据库自动建表并写入演示数据，启动即可体验。
 - 支持在本地切换至 MySQL 数据库（库名 `TextBookManager`），持久化保存数据。
-- Swing 界面提供表单与表格联动，支持新增、修改、删除、刷新操作。
+- Swing 界面提供表单与表格联动，支持教材、出版社、教材类型、订购、入库/领用的录入与查询。
 - 可独立打包成可执行 JAR，便于分发运行。
+- 内置 ISBN 规则校验（必须以 `ISBN` 开头并跟随 10 位数字），触发器自动维护库存，存储过程输出订购/到货/发放统计。
 
 ## 环境准备
 - JDK 17（建议安装 OpenJDK 17+ 并将 `JAVA_HOME` 指向该版本）。
@@ -24,6 +25,30 @@
 3. IDE 运行：直接执行 `com.example.textbookmgmt.App` 的 `main` 方法即可。
 
 > 如果 Maven 在下载依赖时受限，请配置可用的镜像或私有仓库，然后重新执行构建命令。
+
+## 功能模块速览
+- **教材维护**：录入/修改教材信息，ISBN 需满足 `ISBNXXXXXXXXXX` 格式；库存非负。
+- **出版社管理**：维护出版社名称与联系方式，可在教材表单中直接关联。
+- **教材类型管理**：维护教材分类并可在教材表单中选择绑定。
+- **教材订购**：选择教材、填写订购/到货数量与状态，支持录入下单/到货日期。
+- **入库与领用**：通过 “IN/OUT” 方向记录入库或领用，触发器会自动同步教材库存。
+
+## 库表、规则与触发器
+- 表结构：`publishers`、`textbook_types`、`textbooks`、`textbook_orders`、`inventory_transactions`，均由 `DatabaseUtil` 启动时自动创建并填充示例数据。
+- 约束：`textbooks.isbn` 启用格式检查，同时在业务层二次校验必须以 `ISBN` 开头且后续 10 位为数字。
+- 触发器：`trg_inventory_insert` 在每次新增入库/领用流水时自动增加或扣减 `textbooks.stock`。
+- 存储过程：`sp_textbook_stats` 汇总各教材订购数量、到货数量（IN）与发放数量（OUT）。
+
+### 在 MySQL 中查看触发器/存储过程
+```sql
+SHOW TRIGGERS LIKE 'inventory_transactions';
+CALL sp_textbook_stats();
+```
+
+### 在 H2 (IDE 运行时) 调用存储过程
+```sql
+CALL SP_TEXTBOOK_STATS();
+```
 
 ## 数据库切换与配置说明
 ### 默认的 H2 内存库
