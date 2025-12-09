@@ -39,7 +39,7 @@ public class JdbcTextbookOrderDao implements TextbookOrderDao {
     @Override
     public List<TextbookOrder> findAll() throws SQLException {
         String sql = "SELECT id, textbook_id, quantity, arrived_quantity, status, ordered_date, arrival_date"
-                + " FROM textbook_orders ORDER BY ordered_date DESC NULLS LAST, id DESC";
+                + " FROM textbook_orders ORDER BY ordered_date IS NULL, ordered_date DESC, id DESC";
         try (Connection connection = DatabaseUtil.getConnection();
              PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
