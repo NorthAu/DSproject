@@ -120,7 +120,7 @@ public class OrderPanel extends JPanel {
         }
     }
 
-    private void reload() {
+    public void reload() {
         textbookCombo.removeAllItems();
         for (Textbook textbook : textbookService.list()) {
             textbookCombo.addItem(textbook);

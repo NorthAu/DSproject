@@ -64,10 +64,13 @@ public class PublisherPanel extends JPanel {
         save.addActionListener(e -> onSave());
         JButton delete = new JButton("删除");
         delete.addActionListener(e -> onDelete());
+        JButton refresh = new JButton("刷新");
+        refresh.addActionListener(e -> reload());
         JButton clear = new JButton("清空表单");
         clear.addActionListener(e -> clear());
         panel.add(save);
         panel.add(delete);
+        panel.add(refresh);
         panel.add(clear);
         return panel;
     }
@@ -102,7 +105,7 @@ public class PublisherPanel extends JPanel {
         clear();
     }
 
-    private void reload() {
+    public void reload() {
         tableModel.setData(publisherService.list());
     }
 

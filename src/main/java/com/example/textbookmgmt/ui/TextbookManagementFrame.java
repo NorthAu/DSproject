@@ -22,6 +22,10 @@ public class TextbookManagementFrame extends JFrame {
     private final TextbookTableModel tableModel = new TextbookTableModel();
     private final JTable table = new JTable(tableModel);
     private final TextbookFormPanel formPanel = new TextbookFormPanel();
+    private PublisherPanel publisherPanel;
+    private TextbookTypePanel typePanel;
+    private OrderPanel orderPanel;
+    private InventoryPanel inventoryPanel;
     private final JLabel statusLabel = new JLabel();
 
     public TextbookManagementFrame(TextbookService textbookService,
@@ -50,7 +54,7 @@ public class TextbookManagementFrame extends JFrame {
         add(buildTabs(), BorderLayout.CENTER);
         add(createButtonPanel(), BorderLayout.SOUTH);
 
-        reloadTable();
+        reloadAll();
     }
 
     private JTabbedPane buildTabs() {
@@ -59,10 +63,14 @@ public class TextbookManagementFrame extends JFrame {
         textbookPanel.add(formPanel, BorderLayout.NORTH);
         textbookPanel.add(createTablePanel(), BorderLayout.CENTER);
         tabs.addTab("教材", textbookPanel);
-        tabs.addTab("出版社", new PublisherPanel(publisherService));
-        tabs.addTab("教材类型", new TextbookTypePanel(typeService));
-        tabs.addTab("订购", new OrderPanel(textbookService, orderService));
-        tabs.addTab("入库/领用", new InventoryPanel(textbookService, inventoryService));
+        publisherPanel = new PublisherPanel(publisherService);
+        typePanel = new TextbookTypePanel(typeService);
+        orderPanel = new OrderPanel(textbookService, orderService);
+        inventoryPanel = new InventoryPanel(textbookService, inventoryService);
+        tabs.addTab("出版社", publisherPanel);
+        tabs.addTab("教材类型", typePanel);
+        tabs.addTab("订购", orderPanel);
+        tabs.addTab("入库/领用", inventoryPanel);
         return tabs;
     }
 
@@ -83,7 +91,7 @@ public class TextbookManagementFrame extends JFrame {
         deleteButton.addActionListener(e -> onDelete());
         JButton refreshButton = new JButton("刷新");
         refreshButton.setMnemonic('R');
-        refreshButton.addActionListener(e -> reloadTable());
+        refreshButton.addActionListener(e -> reloadAll());
         JButton clearButton = new JButton("清空选择");
         clearButton.addActionListener(e -> clearSelection());
 
@@ -117,7 +125,7 @@ public class TextbookManagementFrame extends JFrame {
         try {
             Textbook textbook = formPanel.toTextbook(null);
             textbookService.create(textbook);
-            reloadTable();
+            reloadAll();
             formPanel.reset();
             JOptionPane.showMessageDialog(this, "新增成功", "提示", JOptionPane.INFORMATION_MESSAGE);
         } catch (IllegalArgumentException ex) {
@@ -136,7 +144,7 @@ public class TextbookManagementFrame extends JFrame {
         try {
             Textbook textbook = formPanel.toTextbook(id);
             textbookService.update(textbook);
-            reloadTable();
+            reloadAll();
             formPanel.reset();
             JOptionPane.showMessageDialog(this, "修改成功", "提示", JOptionPane.INFORMATION_MESSAGE);
         } catch (IllegalArgumentException ex) {
@@ -154,17 +162,29 @@ public class TextbookManagementFrame extends JFrame {
         int confirm = JOptionPane.showConfirmDialog(this, "确定要删除该教材吗？", "确认", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             textbookService.delete(id);
-            reloadTable();
+            reloadAll();
             formPanel.reset();
         }
     }
 
-    private void reloadTable() {
+    private void reloadAll() {
         List<Textbook> textbooks = textbookService.list();
         tableModel.setData(textbooks);
         updateStatus(textbooks.size());
         formPanel.setPublisherOptions(publisherService.list());
         formPanel.setTypeOptions(typeService.list());
+        if (publisherPanel != null) {
+            publisherPanel.reload();
+        }
+        if (typePanel != null) {
+            typePanel.reload();
+        }
+        if (orderPanel != null) {
+            orderPanel.reload();
+        }
+        if (inventoryPanel != null) {
+            inventoryPanel.reload();
+        }
     }
 
     private void onTableSelection() {

@@ -36,6 +36,8 @@ public final class DatabaseUtil {
     }
 
     public static void initializeDatabase() {
+        Profile profile = resolveProfile();
+        ensureDatabaseExists(profile);
         try (Connection connection = getConnection();
              Statement statement = connection.createStatement()) {
             createCoreTables(statement);
@@ -67,6 +69,49 @@ public final class DatabaseUtil {
         } catch (SQLException e) {
             throw new RuntimeException("初始化数据库失败", e);
         }
+    }
+
+    private static void ensureDatabaseExists(Profile profile) {
+        if (profile != Profile.MYSQL) {
+            return;
+        }
+
+        String urlWithDb = resolveJdbcUrl(profile);
+        String user = resolveUser(profile);
+        String password = resolvePassword(profile);
+        String dbName = extractDatabaseName(urlWithDb);
+        String adminUrl = buildAdminUrl(urlWithDb);
+
+        try (Connection connection = DriverManager.getConnection(adminUrl, user, password);
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("CREATE DATABASE IF NOT EXISTS `" + dbName + "` DEFAULT CHARACTER SET utf8mb4");
+        } catch (SQLException e) {
+            throw new RuntimeException("无法创建或访问 MySQL 数据库: " + dbName, e);
+        }
+    }
+
+    private static String extractDatabaseName(String urlWithDb) {
+        int paramsIndex = urlWithDb.indexOf('?');
+        int end = paramsIndex >= 0 ? paramsIndex : urlWithDb.length();
+        int lastSlash = urlWithDb.lastIndexOf('/', end);
+        if (lastSlash == -1 || lastSlash + 1 >= end) {
+            return "TextBookManager";
+        }
+        return urlWithDb.substring(lastSlash + 1, end);
+    }
+
+    private static String buildAdminUrl(String urlWithDb) {
+        int paramsIndex = urlWithDb.indexOf('?');
+        int end = paramsIndex >= 0 ? paramsIndex : urlWithDb.length();
+        int lastSlash = urlWithDb.lastIndexOf('/', end);
+        if (lastSlash == -1) {
+            return urlWithDb;
+        }
+        String base = urlWithDb.substring(0, lastSlash + 1);
+        if (paramsIndex >= 0) {
+            base = base + urlWithDb.substring(paramsIndex);
+        }
+        return base;
     }
 
     private static void createCoreTables(Statement statement) throws SQLException {
