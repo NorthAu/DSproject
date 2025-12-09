@@ -30,6 +30,10 @@ public class Textbook {
         this(null, title, author, publisher, null, null, isbn, stock);
     }
 
+    public Textbook(Long id, String title, String author, String publisher, String isbn, int stock) {
+        this(id, title, author, publisher, null, null, isbn, stock);
+    }
+
     public Long getId() {
         return id;
     }
