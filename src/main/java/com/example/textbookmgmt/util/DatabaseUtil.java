@@ -2,20 +2,10 @@ package com.example.textbookmgmt.util;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Locale;
 
 public final class DatabaseUtil {
-    private static final String PROFILE_PROPERTY = "db.profile";
-    private static final String PROFILE_ENV = "DB_PROFILE";
-
-    private static final String H2_URL = "jdbc:h2:mem:textbooks;DB_CLOSE_DELAY=-1";
-    private static final String H2_USER = "sa";
-    private static final String H2_PASSWORD = "";
-
     private static final String MYSQL_DEFAULT_URL = "jdbc:mysql://localhost:3306/TextBookManager?useSSL=false&serverTimezone=UTC";
     private static final String MYSQL_DEFAULT_USER = "root";
     private static final String MYSQL_DEFAULT_PASSWORD = "";
@@ -28,16 +18,14 @@ public final class DatabaseUtil {
     }
 
     public static Connection getConnection() throws SQLException {
-        Profile profile = resolveProfile();
-        String url = resolveJdbcUrl(profile);
-        String user = resolveUser(profile);
-        String password = resolvePassword(profile);
+        String url = resolveJdbcUrl();
+        String user = resolveUser();
+        String password = resolvePassword();
         return DriverManager.getConnection(url, user, password);
     }
 
     public static void initializeDatabase() {
-        Profile profile = resolveProfile();
-        ensureDatabaseExists(profile);
+        ensureDatabaseExists();
         try (Connection connection = getConnection();
              Statement statement = connection.createStatement()) {
             createCoreTables(statement);
@@ -71,14 +59,10 @@ public final class DatabaseUtil {
         }
     }
 
-    private static void ensureDatabaseExists(Profile profile) {
-        if (profile != Profile.MYSQL) {
-            return;
-        }
-
-        String urlWithDb = resolveJdbcUrl(profile);
-        String user = resolveUser(profile);
-        String password = resolvePassword(profile);
+    private static void ensureDatabaseExists() {
+        String urlWithDb = resolveJdbcUrl();
+        String user = resolveUser();
+        String password = resolvePassword();
         String dbName = extractDatabaseName(urlWithDb);
         String adminUrl = buildAdminUrl(urlWithDb);
 
@@ -174,110 +158,49 @@ public final class DatabaseUtil {
     }
 
     private static void createTriggers(Statement statement) throws SQLException {
-        if (resolveProfile() == Profile.MYSQL) {
-            statement.executeUpdate("DROP TRIGGER IF EXISTS trg_inventory_insert");
-            statement.executeUpdate("""
-                    CREATE TRIGGER trg_inventory_insert
-                    AFTER INSERT ON inventory_transactions
-                    FOR EACH ROW
-                    BEGIN
-                        UPDATE textbooks
-                        SET stock = stock + CASE WHEN NEW.direction = 'IN' THEN NEW.quantity ELSE -NEW.quantity END
-                        WHERE id = NEW.textbook_id;
-                    END
-                    """);
-        } else {
-            statement.executeUpdate("DROP TRIGGER IF EXISTS trg_inventory_insert");
-            statement.executeUpdate("""
-                    CREATE TRIGGER trg_inventory_insert
-                    AFTER INSERT ON inventory_transactions
-                    FOR EACH ROW
-                    AS
-                    BEGIN ATOMIC
-                        UPDATE textbooks
-                        SET stock = stock + CASE WHEN NEW.direction = 'IN' THEN NEW.quantity ELSE -NEW.quantity END
-                        WHERE id = NEW.textbook_id;
-                    END
-                    """);
-        }
+        statement.executeUpdate("DROP TRIGGER IF EXISTS trg_inventory_insert");
+        statement.executeUpdate("""
+                CREATE TRIGGER trg_inventory_insert
+                AFTER INSERT ON inventory_transactions
+                FOR EACH ROW
+                BEGIN
+                    UPDATE textbooks
+                    SET stock = stock + CASE WHEN NEW.direction = 'IN' THEN NEW.quantity ELSE -NEW.quantity END
+                    WHERE id = NEW.textbook_id;
+                END
+                """);
     }
 
     private static void createStoredProcedures(Statement statement) throws SQLException {
-        if (resolveProfile() == Profile.MYSQL) {
-            statement.executeUpdate("DROP PROCEDURE IF EXISTS sp_textbook_stats");
-            statement.executeUpdate("""
-                    CREATE PROCEDURE sp_textbook_stats()
-                    BEGIN
-                        SELECT t.id,
-                               t.title,
-                               COALESCE(SUM(o.quantity), 0) AS total_ordered,
-                               COALESCE(SUM(CASE WHEN it.direction = 'IN' THEN it.quantity END), 0) AS total_received,
-                               COALESCE(SUM(CASE WHEN it.direction = 'OUT' THEN it.quantity END), 0) AS total_issued
-                        FROM textbooks t
-                        LEFT JOIN textbook_orders o ON o.textbook_id = t.id
-                        LEFT JOIN inventory_transactions it ON it.textbook_id = t.id
-                        GROUP BY t.id, t.title;
-                    END
-                    """);
-        } else {
-            statement.executeUpdate("DROP ALIAS IF EXISTS SP_TEXTBOOK_STATS");
-            statement.executeUpdate("CREATE ALIAS SP_TEXTBOOK_STATS FOR \"com.example.textbookmgmt.util.DatabaseUtil.statsProc\"");
-        }
+        statement.executeUpdate("DROP PROCEDURE IF EXISTS sp_textbook_stats");
+        statement.executeUpdate("""
+                CREATE PROCEDURE sp_textbook_stats()
+                BEGIN
+                    SELECT t.id,
+                           t.title,
+                           COALESCE(SUM(o.quantity), 0) AS total_ordered,
+                           COALESCE(SUM(CASE WHEN it.direction = 'IN' THEN it.quantity END), 0) AS total_received,
+                           COALESCE(SUM(CASE WHEN it.direction = 'OUT' THEN it.quantity END), 0) AS total_issued
+                    FROM textbooks t
+                    LEFT JOIN textbook_orders o ON o.textbook_id = t.id
+                    LEFT JOIN inventory_transactions it ON it.textbook_id = t.id
+                    GROUP BY t.id, t.title;
+                END
+                """);
     }
 
-    public static ResultSet statsProc(Connection connection) throws SQLException {
-        String sql = """
-                SELECT t.id,
-                       t.title,
-                       COALESCE(SUM(o.quantity), 0) AS total_ordered,
-                       COALESCE(SUM(CASE WHEN it.direction = 'IN' THEN it.quantity END), 0) AS total_received,
-                       COALESCE(SUM(CASE WHEN it.direction = 'OUT' THEN it.quantity END), 0) AS total_issued
-                FROM textbooks t
-                LEFT JOIN textbook_orders o ON o.textbook_id = t.id
-                LEFT JOIN inventory_transactions it ON it.textbook_id = t.id
-                GROUP BY t.id, t.title
-                """;
-        PreparedStatement ps = connection.prepareStatement(sql);
-        return ps.executeQuery();
+    private static String resolveJdbcUrl() {
+        return System.getProperty(MYSQL_URL_ENV,
+                System.getenv().getOrDefault(MYSQL_URL_ENV, MYSQL_DEFAULT_URL));
     }
 
-    private static Profile resolveProfile() {
-        String configured = System.getProperty(PROFILE_PROPERTY, System.getenv(PROFILE_ENV));
-        if (configured == null || configured.isBlank()) {
-            return Profile.H2;
-        }
-        try {
-            return Profile.valueOf(configured.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            return Profile.H2;
-        }
+    private static String resolveUser() {
+        return System.getProperty(MYSQL_USER_ENV,
+                System.getenv().getOrDefault(MYSQL_USER_ENV, MYSQL_DEFAULT_USER));
     }
 
-    private static String resolveJdbcUrl(Profile profile) {
-        if (profile == Profile.MYSQL) {
-            return System.getProperty(MYSQL_URL_ENV,
-                    System.getenv().getOrDefault(MYSQL_URL_ENV, MYSQL_DEFAULT_URL));
-        }
-        return H2_URL;
-    }
-
-    private static String resolveUser(Profile profile) {
-        if (profile == Profile.MYSQL) {
-            return System.getProperty(MYSQL_USER_ENV,
-                    System.getenv().getOrDefault(MYSQL_USER_ENV, MYSQL_DEFAULT_USER));
-        }
-        return H2_USER;
-    }
-
-    private static String resolvePassword(Profile profile) {
-        if (profile == Profile.MYSQL) {
-            return System.getProperty(MYSQL_PASSWORD_ENV,
-                    System.getenv().getOrDefault(MYSQL_PASSWORD_ENV, MYSQL_DEFAULT_PASSWORD));
-        }
-        return H2_PASSWORD;
-    }
-
-    private enum Profile {
-        H2, MYSQL
+    private static String resolvePassword() {
+        return System.getProperty(MYSQL_PASSWORD_ENV,
+                System.getenv().getOrDefault(MYSQL_PASSWORD_ENV, MYSQL_DEFAULT_PASSWORD));
     }
 }
