@@ -28,6 +28,8 @@ public class OrderPanel extends JPanel {
     private final OrderTableModel tableModel = new OrderTableModel();
     private final JTable table = new JTable(tableModel);
 
+    private boolean filtering;
+
     public OrderPanel(TextbookService textbookService, TextbookOrderService orderService) {
         super(new BorderLayout(10, 10));
         this.textbookService = textbookService;
@@ -162,10 +164,14 @@ public class OrderPanel extends JPanel {
         });
 
         JTextField editor = (JTextField) textbookCombo.getEditor().getEditorComponent();
-        editor.getDocument().addDocumentListener(new SimpleDocumentAdapter(e -> filterCombo()));
+        editor.getDocument().addDocumentListener(new SimpleDocumentAdapter(e -> SwingUtilities.invokeLater(this::filterCombo)));
     }
 
     private void filterCombo() {
+        if (filtering) {
+            return;
+        }
+        filtering = true;
         JTextField editor = (JTextField) textbookCombo.getEditor().getEditorComponent();
         String text = editor.getText().toLowerCase();
         DefaultComboBoxModel<Textbook> model = new DefaultComboBoxModel<>();
@@ -179,6 +185,7 @@ public class OrderPanel extends JPanel {
         textbookCombo.setSelectedItem(null);
         editor.setText(text);
         textbookCombo.setPopupVisible(true);
+        filtering = false;
     }
 
     private void refreshComboItems() {
