@@ -162,7 +162,7 @@ public class OrderPanel extends JPanel {
         });
 
         JTextField editor = (JTextField) textbookCombo.getEditor().getEditorComponent();
-        editor.getDocument().addDocumentListener(new SimpleDocumentAdapter(this::filterCombo));
+        editor.getDocument().addDocumentListener(new SimpleDocumentAdapter(e -> filterCombo()));
     }
 
     private void filterCombo() {
