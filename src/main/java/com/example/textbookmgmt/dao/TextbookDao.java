@@ -15,5 +15,7 @@ public interface TextbookDao {
 
     Optional<Textbook> findById(long id) throws SQLException;
 
+    Optional<Textbook> findByIsbn(String isbn) throws SQLException;
+
     List<Textbook> findAll() throws SQLException;
 }

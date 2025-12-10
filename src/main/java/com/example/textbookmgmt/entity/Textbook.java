@@ -9,6 +9,7 @@ public class Textbook {
     private String publisher;
     private Long publisherId;
     private Long typeId;
+    private String typeName;
     private String isbn;
     private int stock;
 
@@ -82,6 +83,14 @@ public class Textbook {
         this.typeId = typeId;
     }
 
+    public String getTypeName() {
+        return typeName;
+    }
+
+    public void setTypeName(String typeName) {
+        this.typeName = typeName;
+    }
+
     public String getIsbn() {
         return isbn;
     }
@@ -100,14 +109,7 @@ public class Textbook {
 
     @Override
     public String toString() {
-        return "Textbook{" +
-                "id=" + id +
-                ", title='" + title + '\'' +
-                ", author='" + author + '\'' +
-                ", publisher='" + publisher + '\'' +
-                ", isbn='" + isbn + '\'' +
-                ", stock=" + stock +
-                '}';
+        return title + " (" + isbn + ")";
     }
 
     @Override

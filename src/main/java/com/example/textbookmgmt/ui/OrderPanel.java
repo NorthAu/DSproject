@@ -10,7 +10,9 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class OrderPanel extends JPanel {
@@ -20,8 +22,9 @@ public class OrderPanel extends JPanel {
     private final JSpinner quantitySpinner = new JSpinner(new SpinnerNumberModel(10, 1, 1000, 1));
     private final JSpinner arrivedSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 1000, 1));
     private final JTextField statusField = new JTextField("已下单", 12);
-    private final JTextField orderedDateField = new JTextField(10);
-    private final JTextField arrivalDateField = new JTextField(10);
+    private final JSpinner orderedDateSpinner = buildDateSpinner();
+    private final JSpinner arrivalDateSpinner = buildDateSpinner();
+    private final List<Textbook> textbooks = new ArrayList<>();
     private final OrderTableModel tableModel = new OrderTableModel();
     private final JTable table = new JTable(tableModel);
 
@@ -31,6 +34,7 @@ public class OrderPanel extends JPanel {
         this.orderService = orderService;
         setBorder(new EmptyBorder(6, 6, 6, 6));
 
+        configureTextbookCombo();
         add(buildForm(), BorderLayout.NORTH);
         add(buildTable(), BorderLayout.CENTER);
         add(buildButtons(), BorderLayout.SOUTH);
@@ -73,13 +77,13 @@ public class OrderPanel extends JPanel {
         gbc.gridy = 4;
         panel.add(new JLabel("下单日期(yyyy-MM-dd):"), gbc);
         gbc.gridx = 1;
-        panel.add(orderedDateField, gbc);
+        panel.add(orderedDateSpinner, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 5;
         panel.add(new JLabel("到货日期(yyyy-MM-dd):"), gbc);
         gbc.gridx = 1;
-        panel.add(arrivalDateField, gbc);
+        panel.add(arrivalDateSpinner, gbc);
         return panel;
     }
 
@@ -110,8 +114,8 @@ public class OrderPanel extends JPanel {
             order.setQuantity((Integer) quantitySpinner.getValue());
             order.setArrivedQuantity((Integer) arrivedSpinner.getValue());
             order.setStatus(statusField.getText());
-            order.setOrderedDate(parseDate(orderedDateField.getText()));
-            order.setArrivalDate(parseDate(arrivalDateField.getText()));
+            order.setOrderedDate(parseDate(orderedDateSpinner));
+            order.setArrivalDate(parseDate(arrivalDateSpinner));
             orderService.create(order);
             reload();
             JOptionPane.showMessageDialog(this, "订购记录已保存", "提示", JOptionPane.INFORMATION_MESSAGE);
@@ -121,18 +125,67 @@ public class OrderPanel extends JPanel {
     }
 
     public void reload() {
-        textbookCombo.removeAllItems();
-        for (Textbook textbook : textbookService.list()) {
-            textbookCombo.addItem(textbook);
-        }
+        textbooks.clear();
+        textbooks.addAll(textbookService.list());
+        refreshComboItems();
         tableModel.setData(orderService.list());
     }
 
-    private LocalDate parseDate(String text) {
+    private LocalDate parseDate(JSpinner spinner) {
+        if (!(spinner.getValue() instanceof Date date)) {
+            return null;
+        }
+        String text = ((JSpinner.DateEditor) spinner.getEditor()).getTextField().getText();
         if (text == null || text.isBlank()) {
             return null;
         }
-        return LocalDate.parse(text.trim());
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    private JSpinner buildDateSpinner() {
+        SpinnerDateModel model = new SpinnerDateModel();
+        JSpinner spinner = new JSpinner(model);
+        JSpinner.DateEditor editor = new JSpinner.DateEditor(spinner, "yyyy-MM-dd");
+        spinner.setEditor(editor);
+        spinner.setPreferredSize(new Dimension(140, 26));
+        return spinner;
+    }
+
+    private void configureTextbookCombo() {
+        textbookCombo.setEditable(true);
+        textbookCombo.setRenderer((list, value, index, isSelected, cellHasFocus) -> {
+            JLabel label = (JLabel) new DefaultListCellRenderer().getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (value instanceof Textbook textbook) {
+                label.setText(textbook.getTitle() + " (" + textbook.getIsbn() + ")");
+            }
+            return label;
+        });
+
+        JTextField editor = (JTextField) textbookCombo.getEditor().getEditorComponent();
+        editor.getDocument().addDocumentListener(new SimpleDocumentAdapter(this::filterCombo));
+    }
+
+    private void filterCombo() {
+        JTextField editor = (JTextField) textbookCombo.getEditor().getEditorComponent();
+        String text = editor.getText().toLowerCase();
+        DefaultComboBoxModel<Textbook> model = new DefaultComboBoxModel<>();
+        for (Textbook textbook : textbooks) {
+            String label = (textbook.getTitle() + " " + textbook.getIsbn()).toLowerCase();
+            if (text.isBlank() || label.contains(text)) {
+                model.addElement(textbook);
+            }
+        }
+        textbookCombo.setModel(model);
+        textbookCombo.setSelectedItem(null);
+        editor.setText(text);
+        textbookCombo.setPopupVisible(true);
+    }
+
+    private void refreshComboItems() {
+        DefaultComboBoxModel<Textbook> model = new DefaultComboBoxModel<>();
+        textbooks.forEach(model::addElement);
+        textbookCombo.setModel(model);
+        textbookCombo.setSelectedItem(null);
     }
 
     static class OrderTableModel extends AbstractTableModel {

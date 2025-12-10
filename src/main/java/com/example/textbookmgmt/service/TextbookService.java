@@ -19,6 +19,17 @@ public class TextbookService {
     public Textbook create(Textbook textbook) {
         validate(textbook);
         try {
+            Optional<Textbook> existing = textbookDao.findByIsbn(textbook.getIsbn());
+            if (existing.isPresent()) {
+                Textbook merged = existing.get();
+                merged.setTitle(textbook.getTitle());
+                merged.setAuthor(textbook.getAuthor());
+                merged.setPublisher(textbook.getPublisher());
+                merged.setPublisherId(textbook.getPublisherId());
+                merged.setTypeId(textbook.getTypeId());
+                merged.setStock(Math.max(0, merged.getStock()) + textbook.getStock());
+                return textbookDao.update(merged);
+            }
             return textbookDao.save(textbook);
         } catch (SQLException e) {
             throw new RuntimeException("无法保存教材", e);

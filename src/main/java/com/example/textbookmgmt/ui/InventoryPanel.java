@@ -9,8 +9,12 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
 import java.awt.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class InventoryPanel extends JPanel {
@@ -20,6 +24,8 @@ public class InventoryPanel extends JPanel {
     private final JComboBox<String> directionCombo = new JComboBox<>(new String[]{"IN", "OUT"});
     private final JSpinner quantitySpinner = new JSpinner(new SpinnerNumberModel(1, 1, 10000, 1));
     private final JTextField reasonField = new JTextField(20);
+    private final JSpinner occurredDateSpinner = buildDateSpinner();
+    private final List<Textbook> textbooks = new ArrayList<>();
     private final InventoryTableModel tableModel = new InventoryTableModel();
     private final JTable table = new JTable(tableModel);
 
@@ -29,6 +35,7 @@ public class InventoryPanel extends JPanel {
         this.inventoryService = inventoryService;
         setBorder(new EmptyBorder(6, 6, 6, 6));
 
+        configureTextbookCombo();
         add(buildForm(), BorderLayout.NORTH);
         add(buildTable(), BorderLayout.CENTER);
         add(buildButtons(), BorderLayout.SOUTH);
@@ -66,6 +73,12 @@ public class InventoryPanel extends JPanel {
         panel.add(new JLabel("原因:"), gbc);
         gbc.gridx = 1;
         panel.add(reasonField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        panel.add(new JLabel("时间(yyyy-MM-dd):"), gbc);
+        gbc.gridx = 1;
+        panel.add(occurredDateSpinner, gbc);
         return panel;
     }
 
@@ -96,7 +109,7 @@ public class InventoryPanel extends JPanel {
             tx.setDirection((String) directionCombo.getSelectedItem());
             tx.setQuantity((Integer) quantitySpinner.getValue());
             tx.setReason(reasonField.getText());
-            tx.setOccurredAt(LocalDateTime.now());
+            tx.setOccurredAt(buildDateTime());
             inventoryService.record(tx);
             reload();
             JOptionPane.showMessageDialog(this, "库存流水已记录，库存自动同步", "提示", JOptionPane.INFORMATION_MESSAGE);
@@ -106,11 +119,68 @@ public class InventoryPanel extends JPanel {
     }
 
     public void reload() {
-        textbookCombo.removeAllItems();
-        for (Textbook textbook : textbookService.list()) {
-            textbookCombo.addItem(textbook);
-        }
+        textbooks.clear();
+        textbooks.addAll(textbookService.list());
+        refreshComboItems();
         tableModel.setData(inventoryService.list());
+    }
+
+    private JSpinner buildDateSpinner() {
+        SpinnerDateModel model = new SpinnerDateModel();
+        JSpinner spinner = new JSpinner(model);
+        JSpinner.DateEditor editor = new JSpinner.DateEditor(spinner, "yyyy-MM-dd");
+        spinner.setEditor(editor);
+        spinner.setPreferredSize(new Dimension(140, 26));
+        return spinner;
+    }
+
+    private LocalDateTime buildDateTime() {
+        if (!(occurredDateSpinner.getValue() instanceof Date date)) {
+            return LocalDateTime.now();
+        }
+        String text = ((JSpinner.DateEditor) occurredDateSpinner.getEditor()).getTextField().getText();
+        if (text == null || text.isBlank()) {
+            return LocalDateTime.now();
+        }
+        LocalDate localDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        return LocalDateTime.of(localDate, LocalTime.NOON);
+    }
+
+    private void configureTextbookCombo() {
+        textbookCombo.setEditable(true);
+        textbookCombo.setRenderer((list, value, index, isSelected, cellHasFocus) -> {
+            JLabel label = (JLabel) new DefaultListCellRenderer().getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (value instanceof Textbook textbook) {
+                label.setText(textbook.getTitle() + " (" + textbook.getIsbn() + ")");
+            }
+            return label;
+        });
+
+        JTextField editor = (JTextField) textbookCombo.getEditor().getEditorComponent();
+        editor.getDocument().addDocumentListener(new SimpleDocumentAdapter(e -> filterCombo()));
+    }
+
+    private void filterCombo() {
+        JTextField editor = (JTextField) textbookCombo.getEditor().getEditorComponent();
+        String text = editor.getText().toLowerCase();
+        DefaultComboBoxModel<Textbook> model = new DefaultComboBoxModel<>();
+        for (Textbook textbook : textbooks) {
+            String label = (textbook.getTitle() + " " + textbook.getIsbn()).toLowerCase();
+            if (text.isBlank() || label.contains(text)) {
+                model.addElement(textbook);
+            }
+        }
+        textbookCombo.setModel(model);
+        textbookCombo.setSelectedItem(null);
+        editor.setText(text);
+        textbookCombo.setPopupVisible(true);
+    }
+
+    private void refreshComboItems() {
+        DefaultComboBoxModel<Textbook> model = new DefaultComboBoxModel<>();
+        textbooks.forEach(model::addElement);
+        textbookCombo.setModel(model);
+        textbookCombo.setSelectedItem(null);
     }
 
     static class InventoryTableModel extends AbstractTableModel {

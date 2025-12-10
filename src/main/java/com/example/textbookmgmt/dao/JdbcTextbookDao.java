@@ -78,13 +78,13 @@ public class JdbcTextbookDao implements TextbookDao {
 
     @Override
     public Optional<Textbook> findById(long id) throws SQLException {
-        String sql = "SELECT id, title, author, publisher, publisher_id, type_id, isbn, stock FROM textbooks WHERE id=?";
+        String sql = baseSelectSql() + " WHERE t.id=?";
         try (Connection conn = DatabaseUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return Optional.of(mapRow(rs));
+                    return Optional.of(mapRowWithType(rs));
                 }
             }
         }
@@ -93,16 +93,37 @@ public class JdbcTextbookDao implements TextbookDao {
 
     @Override
     public List<Textbook> findAll() throws SQLException {
-        String sql = "SELECT id, title, author, publisher, publisher_id, type_id, isbn, stock FROM textbooks ORDER BY id DESC";
+        String sql = baseSelectSql() + " ORDER BY t.id DESC";
         List<Textbook> textbooks = new ArrayList<>();
         try (Connection conn = DatabaseUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                textbooks.add(mapRow(rs));
+                textbooks.add(mapRowWithType(rs));
             }
         }
         return textbooks;
+    }
+
+    @Override
+    public Optional<Textbook> findByIsbn(String isbn) throws SQLException {
+        String sql = baseSelectSql() + " WHERE t.isbn = ?";
+        try (Connection conn = DatabaseUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, isbn);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapRowWithType(rs));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private String baseSelectSql() {
+        return "SELECT t.id, t.title, t.author, t.publisher, t.publisher_id, t.type_id, t.isbn, t.stock, tt.name AS type_name " +
+                "FROM textbooks t " +
+                "LEFT JOIN textbook_types tt ON t.type_id = tt.id";
     }
 
     private Textbook mapRow(ResultSet rs) throws SQLException {
@@ -116,5 +137,11 @@ public class JdbcTextbookDao implements TextbookDao {
                 rs.getString("isbn"),
                 rs.getInt("stock")
         );
+    }
+
+    private Textbook mapRowWithType(ResultSet rs) throws SQLException {
+        Textbook textbook = mapRow(rs);
+        textbook.setTypeName(rs.getString("type_name"));
+        return textbook;
     }
 }
