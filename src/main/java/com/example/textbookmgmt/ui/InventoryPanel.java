@@ -29,6 +29,8 @@ public class InventoryPanel extends JPanel {
     private final InventoryTableModel tableModel = new InventoryTableModel();
     private final JTable table = new JTable(tableModel);
 
+    private boolean filtering;
+
     public InventoryPanel(TextbookService textbookService, InventoryService inventoryService) {
         super(new BorderLayout(10, 10));
         this.textbookService = textbookService;
@@ -157,10 +159,14 @@ public class InventoryPanel extends JPanel {
         });
 
         JTextField editor = (JTextField) textbookCombo.getEditor().getEditorComponent();
-        editor.getDocument().addDocumentListener(new SimpleDocumentAdapter(e -> filterCombo()));
+        editor.getDocument().addDocumentListener(new SimpleDocumentAdapter(e -> SwingUtilities.invokeLater(this::filterCombo)));
     }
 
     private void filterCombo() {
+        if (filtering) {
+            return;
+        }
+        filtering = true;
         JTextField editor = (JTextField) textbookCombo.getEditor().getEditorComponent();
         String text = editor.getText().toLowerCase();
         DefaultComboBoxModel<Textbook> model = new DefaultComboBoxModel<>();
@@ -173,7 +179,10 @@ public class InventoryPanel extends JPanel {
         textbookCombo.setModel(model);
         textbookCombo.setSelectedItem(null);
         editor.setText(text);
-        textbookCombo.setPopupVisible(true);
+        if (textbookCombo.isDisplayable() && textbookCombo.isShowing()) {
+            textbookCombo.setPopupVisible(true);
+        }
+        filtering = false;
     }
 
     private void refreshComboItems() {

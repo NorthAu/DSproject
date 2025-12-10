@@ -184,7 +184,9 @@ public class OrderPanel extends JPanel {
         textbookCombo.setModel(model);
         textbookCombo.setSelectedItem(null);
         editor.setText(text);
-        textbookCombo.setPopupVisible(true);
+        if (textbookCombo.isDisplayable() && textbookCombo.isShowing()) {
+            textbookCombo.setPopupVisible(true);
+        }
         filtering = false;
     }
 
