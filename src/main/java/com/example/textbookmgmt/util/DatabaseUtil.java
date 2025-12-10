@@ -1,5 +1,8 @@
 package com.example.textbookmgmt.util;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -14,14 +17,13 @@ public final class DatabaseUtil {
     private static final String MYSQL_USER_ENV = "DB_USER";
     private static final String MYSQL_PASSWORD_ENV = "DB_PASSWORD";
 
+    private static volatile HikariDataSource dataSource;
+
     private DatabaseUtil() {
     }
 
     public static Connection getConnection() throws SQLException {
-        String url = resolveJdbcUrl();
-        String user = resolveUser();
-        String password = resolvePassword();
-        return DriverManager.getConnection(url, user, password);
+        return getDataSource().getConnection();
     }
 
     public static void initializeDatabase() {
@@ -202,5 +204,32 @@ public final class DatabaseUtil {
     private static String resolvePassword() {
         return System.getProperty(MYSQL_PASSWORD_ENV,
                 System.getenv().getOrDefault(MYSQL_PASSWORD_ENV, MYSQL_DEFAULT_PASSWORD));
+    }
+
+    private static HikariDataSource getDataSource() {
+        HikariDataSource existing = dataSource;
+        if (existing != null) {
+            return existing;
+        }
+        synchronized (DatabaseUtil.class) {
+            if (dataSource == null) {
+                dataSource = createDataSource();
+            }
+            return dataSource;
+        }
+    }
+
+    private static HikariDataSource createDataSource() {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(resolveJdbcUrl());
+        config.setUsername(resolveUser());
+        config.setPassword(resolvePassword());
+        config.setMaximumPoolSize(8);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(5000);
+        config.setIdleTimeout(120_000);
+        config.setPoolName("TextbookMgmtPool");
+        config.setInitializationFailTimeout(-1);
+        return new HikariDataSource(config);
     }
 }
