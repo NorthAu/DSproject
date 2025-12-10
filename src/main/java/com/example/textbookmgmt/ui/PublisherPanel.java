@@ -9,6 +9,7 @@ import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class PublisherPanel extends JPanel {
     private final PublisherService publisherService;
@@ -25,7 +26,7 @@ public class PublisherPanel extends JPanel {
         add(buildForm(), BorderLayout.NORTH);
         add(buildTable(), BorderLayout.CENTER);
         add(buildButtons(), BorderLayout.SOUTH);
-        reload();
+        reloadAsync();
     }
 
     private JPanel buildForm() {
@@ -65,7 +66,7 @@ public class PublisherPanel extends JPanel {
         JButton delete = new JButton("删除");
         delete.addActionListener(e -> onDelete());
         JButton refresh = new JButton("刷新");
-        refresh.addActionListener(e -> reload());
+        refresh.addActionListener(e -> reloadAsync());
         JButton clear = new JButton("清空表单");
         clear.addActionListener(e -> clear());
         panel.add(save);
@@ -85,7 +86,7 @@ public class PublisherPanel extends JPanel {
             publisher.setName(nameField.getText());
             publisher.setContact(contactField.getText());
             publisherService.save(publisher);
-            reload();
+            reloadAsync();
             clear();
             JOptionPane.showMessageDialog(this, "保存成功", "提示", JOptionPane.INFORMATION_MESSAGE);
         } catch (IllegalArgumentException ex) {
@@ -101,12 +102,29 @@ public class PublisherPanel extends JPanel {
         }
         long id = (Long) tableModel.getValueAt(row, 0);
         publisherService.delete(id);
-        reload();
+        reloadAsync();
         clear();
     }
 
-    public void reload() {
-        tableModel.setData(publisherService.list());
+    public void reloadAsync() {
+        SwingWorker<List<Publisher>, Void> worker = new SwingWorker<>() {
+            @Override
+            protected List<Publisher> doInBackground() {
+                return publisherService.list();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    tableModel.setData(get());
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException ex) {
+                    JOptionPane.showMessageDialog(PublisherPanel.this, "加载出版社失败: " + ex.getCause().getMessage(), "错误", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private void clear() {

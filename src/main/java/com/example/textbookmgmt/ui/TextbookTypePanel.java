@@ -9,6 +9,7 @@ import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class TextbookTypePanel extends JPanel {
     private final TextbookTypeService service;
@@ -25,7 +26,7 @@ public class TextbookTypePanel extends JPanel {
         add(buildForm(), BorderLayout.NORTH);
         add(buildTable(), BorderLayout.CENTER);
         add(buildButtons(), BorderLayout.SOUTH);
-        reload();
+        reloadAsync();
     }
 
     private JPanel buildForm() {
@@ -66,7 +67,7 @@ public class TextbookTypePanel extends JPanel {
         JButton delete = new JButton("删除");
         delete.addActionListener(e -> onDelete());
         JButton refresh = new JButton("刷新");
-        refresh.addActionListener(e -> reload());
+        refresh.addActionListener(e -> reloadAsync());
         JButton clear = new JButton("清空表单");
         clear.addActionListener(e -> clear());
         panel.add(save);
@@ -86,7 +87,7 @@ public class TextbookTypePanel extends JPanel {
             type.setName(nameField.getText());
             type.setDescription(descriptionField.getText());
             service.save(type);
-            reload();
+            reloadAsync();
             clear();
             JOptionPane.showMessageDialog(this, "保存成功", "提示", JOptionPane.INFORMATION_MESSAGE);
         } catch (IllegalArgumentException ex) {
@@ -102,12 +103,29 @@ public class TextbookTypePanel extends JPanel {
         }
         long id = (Long) tableModel.getValueAt(row, 0);
         service.delete(id);
-        reload();
+        reloadAsync();
         clear();
     }
 
-    public void reload() {
-        tableModel.setData(service.list());
+    public void reloadAsync() {
+        SwingWorker<List<TextbookType>, Void> worker = new SwingWorker<>() {
+            @Override
+            protected List<TextbookType> doInBackground() {
+                return service.list();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    tableModel.setData(get());
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException ex) {
+                    JOptionPane.showMessageDialog(TextbookTypePanel.this, "加载类型失败: " + ex.getCause().getMessage(), "错误", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private void clear() {

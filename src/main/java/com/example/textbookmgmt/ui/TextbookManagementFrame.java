@@ -1,6 +1,8 @@
 package com.example.textbookmgmt.ui;
 
 import com.example.textbookmgmt.entity.Textbook;
+import com.example.textbookmgmt.entity.TextbookType;
+import com.example.textbookmgmt.entity.Publisher;
 import com.example.textbookmgmt.service.InventoryService;
 import com.example.textbookmgmt.service.PublisherService;
 import com.example.textbookmgmt.service.TextbookOrderService;
@@ -12,6 +14,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class TextbookManagementFrame extends JFrame {
     private final TextbookService textbookService;
@@ -168,23 +171,44 @@ public class TextbookManagementFrame extends JFrame {
     }
 
     private void reloadAll() {
-        List<Textbook> textbooks = textbookService.list();
-        tableModel.setData(textbooks);
-        updateStatus(textbooks.size());
-        formPanel.setPublisherOptions(publisherService.list());
-        formPanel.setTypeOptions(typeService.list());
-        if (publisherPanel != null) {
-            publisherPanel.reload();
-        }
-        if (typePanel != null) {
-            typePanel.reload();
-        }
-        if (orderPanel != null) {
-            orderPanel.reload();
-        }
-        if (inventoryPanel != null) {
-            inventoryPanel.reload();
-        }
+        statusLabel.setText("加载中...");
+        SwingWorker<ManagementData, Void> worker = new SwingWorker<>() {
+            @Override
+            protected ManagementData doInBackground() {
+                List<Textbook> textbooks = textbookService.list();
+                List<Publisher> publishers = publisherService.list();
+                List<TextbookType> types = typeService.list();
+                return new ManagementData(textbooks, publishers, types);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    ManagementData data = get();
+                    tableModel.setData(data.textbooks());
+                    updateStatus(data.textbooks().size());
+                    formPanel.setPublisherOptions(data.publishers());
+                    formPanel.setTypeOptions(data.types());
+                    if (publisherPanel != null) {
+                        publisherPanel.reloadAsync();
+                    }
+                    if (typePanel != null) {
+                        typePanel.reloadAsync();
+                    }
+                    if (orderPanel != null) {
+                        orderPanel.reloadAsync();
+                    }
+                    if (inventoryPanel != null) {
+                        inventoryPanel.reloadAsync();
+                    }
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException ex) {
+                    showError("加载数据失败: " + ex.getCause().getMessage());
+                }
+            }
+        };
+        worker.execute();
     }
 
     private void onTableSelection() {
@@ -202,5 +226,13 @@ public class TextbookManagementFrame extends JFrame {
 
     private void updateStatus(int count) {
         statusLabel.setText(String.format("共 %d 条记录 · 支持列排序与表单同步", count));
+    }
+
+    private void showError(String message) {
+        statusLabel.setText("加载失败");
+        JOptionPane.showMessageDialog(this, message, "错误", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private record ManagementData(List<Textbook> textbooks, List<Publisher> publishers, List<TextbookType> types) {
     }
 }

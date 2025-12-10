@@ -16,6 +16,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class InventoryPanel extends JPanel {
     private final TextbookService textbookService;
@@ -41,7 +42,7 @@ public class InventoryPanel extends JPanel {
         add(buildForm(), BorderLayout.NORTH);
         add(buildTable(), BorderLayout.CENTER);
         add(buildButtons(), BorderLayout.SOUTH);
-        reload();
+        reloadAsync();
     }
 
     private JPanel buildForm() {
@@ -97,7 +98,7 @@ public class InventoryPanel extends JPanel {
         JButton save = new JButton("记录");
         save.addActionListener(e -> onSave());
         JButton refresh = new JButton("刷新");
-        refresh.addActionListener(e -> reload());
+        refresh.addActionListener(e -> reloadAsync());
         panel.add(save);
         panel.add(refresh);
         return panel;
@@ -113,18 +114,38 @@ public class InventoryPanel extends JPanel {
             tx.setReason(reasonField.getText());
             tx.setOccurredAt(buildDateTime());
             inventoryService.record(tx);
-            reload();
+            reloadAsync();
             JOptionPane.showMessageDialog(this, "库存流水已记录，库存自动同步", "提示", JOptionPane.INFORMATION_MESSAGE);
         } catch (IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "校验失败", JOptionPane.WARNING_MESSAGE);
         }
     }
 
-    public void reload() {
-        textbooks.clear();
-        textbooks.addAll(textbookService.list());
-        refreshComboItems();
-        tableModel.setData(inventoryService.list());
+    public void reloadAsync() {
+        SwingWorker<InventoryData, Void> worker = new SwingWorker<>() {
+            @Override
+            protected InventoryData doInBackground() {
+                List<Textbook> loadedTextbooks = textbookService.list();
+                List<InventoryTransaction> transactions = inventoryService.list();
+                return new InventoryData(loadedTextbooks, transactions);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    InventoryData data = get();
+                    textbooks.clear();
+                    textbooks.addAll(data.textbooks());
+                    refreshComboItems();
+                    tableModel.setData(data.transactions());
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException ex) {
+                    JOptionPane.showMessageDialog(InventoryPanel.this, "加载库存流水失败: " + ex.getCause().getMessage(), "错误", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private JSpinner buildDateSpinner() {
@@ -190,6 +211,9 @@ public class InventoryPanel extends JPanel {
         textbooks.forEach(model::addElement);
         textbookCombo.setModel(model);
         textbookCombo.setSelectedItem(null);
+    }
+
+    private record InventoryData(List<Textbook> textbooks, List<InventoryTransaction> transactions) {
     }
 
     static class InventoryTableModel extends AbstractTableModel {

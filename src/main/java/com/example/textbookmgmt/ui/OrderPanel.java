@@ -14,6 +14,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class OrderPanel extends JPanel {
     private final TextbookService textbookService;
@@ -40,7 +41,7 @@ public class OrderPanel extends JPanel {
         add(buildForm(), BorderLayout.NORTH);
         add(buildTable(), BorderLayout.CENTER);
         add(buildButtons(), BorderLayout.SOUTH);
-        reload();
+        reloadAsync();
     }
 
     private JPanel buildForm() {
@@ -102,7 +103,7 @@ public class OrderPanel extends JPanel {
         JButton save = new JButton("新增订购");
         save.addActionListener(e -> onSave());
         JButton refresh = new JButton("刷新");
-        refresh.addActionListener(e -> reload());
+        refresh.addActionListener(e -> reloadAsync());
         panel.add(save);
         panel.add(refresh);
         return panel;
@@ -119,18 +120,38 @@ public class OrderPanel extends JPanel {
             order.setOrderedDate(parseDate(orderedDateSpinner));
             order.setArrivalDate(parseDate(arrivalDateSpinner));
             orderService.create(order);
-            reload();
+            reloadAsync();
             JOptionPane.showMessageDialog(this, "订购记录已保存", "提示", JOptionPane.INFORMATION_MESSAGE);
         } catch (IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "校验失败", JOptionPane.WARNING_MESSAGE);
         }
     }
 
-    public void reload() {
-        textbooks.clear();
-        textbooks.addAll(textbookService.list());
-        refreshComboItems();
-        tableModel.setData(orderService.list());
+    public void reloadAsync() {
+        SwingWorker<OrderData, Void> worker = new SwingWorker<>() {
+            @Override
+            protected OrderData doInBackground() {
+                List<Textbook> loadedTextbooks = textbookService.list();
+                List<TextbookOrder> orders = orderService.list();
+                return new OrderData(loadedTextbooks, orders);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    OrderData data = get();
+                    textbooks.clear();
+                    textbooks.addAll(data.textbooks());
+                    refreshComboItems();
+                    tableModel.setData(data.orders());
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException ex) {
+                    JOptionPane.showMessageDialog(OrderPanel.this, "加载订购信息失败: " + ex.getCause().getMessage(), "错误", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private LocalDate parseDate(JSpinner spinner) {
@@ -195,6 +216,9 @@ public class OrderPanel extends JPanel {
         textbooks.forEach(model::addElement);
         textbookCombo.setModel(model);
         textbookCombo.setSelectedItem(null);
+    }
+
+    private record OrderData(List<Textbook> textbooks, List<TextbookOrder> orders) {
     }
 
     static class OrderTableModel extends AbstractTableModel {
