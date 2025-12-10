@@ -1,6 +1,6 @@
 # 高校教材管理系统（Java Swing + JDBC）
 
-本项目基于 **JDK 17** 与 Java Swing 构建桌面客户端，使用 JDBC 访问本地 **MySQL(TextBookManager)** 数据库。代码按分层架构组织：`ui` 负责界面交互，`dao` 负责数据访问，`service` 实现业务校验，`entity` 封装实体，`util` 管理数据库连接与初始化。
+本项目基于 **JDK 21** 与 Java Swing 构建桌面客户端，使用 JDBC 访问本地 **MySQL(TextBookManager)** 数据库。代码按分层架构组织：`ui` 负责界面交互，`dao` 负责数据访问，`service` 实现业务校验，`entity` 封装实体，`util` 管理数据库连接与初始化。
 
 ## 主要特性
 - 默认使用本地 MySQL 数据库（库名 `TextBookManager`），每次启动都会检查并创建缺失的表/触发器/存储过程并写入演示数据。
@@ -9,8 +9,10 @@
 - 内置 ISBN 规则校验（必须以 `ISBN` 开头并跟随 10 位数字），触发器自动维护库存，存储过程输出订购/到货/发放统计。
 
 ## 环境准备
-- JDK 17（建议安装 OpenJDK 17+ 并将 `JAVA_HOME` 指向该版本）。
-- Maven 3.9+（保证 `mvn -v` 输出的 Java 版本为 17）。
+- JDK 21（建议安装 OpenJDK 21+ 并将 `JAVA_HOME` 指向该版本）。
+- Maven 3.9+（保证 `mvn -v` 输出的 Java 版本为 21）。
+
+> 变更说明：项目已从 JDK 17 升级到 **JDK 21**，请在本地与 CI 环境中同步更新所用 JDK 版本后再进行构建与运行。
 
 ## 编译与运行
 1. 下载依赖并编译打包（跳过测试）：
