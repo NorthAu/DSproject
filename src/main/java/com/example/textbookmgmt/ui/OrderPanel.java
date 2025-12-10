@@ -29,8 +29,6 @@ public class OrderPanel extends JPanel {
     private final OrderTableModel tableModel = new OrderTableModel();
     private final JTable table = new JTable(tableModel);
 
-    private boolean filtering;
-
     public OrderPanel(TextbookService textbookService, TextbookOrderService orderService) {
         super(new BorderLayout(10, 10));
         this.textbookService = textbookService;
@@ -175,7 +173,6 @@ public class OrderPanel extends JPanel {
     }
 
     private void configureTextbookCombo() {
-        textbookCombo.setEditable(true);
         textbookCombo.setRenderer((list, value, index, isSelected, cellHasFocus) -> {
             JLabel label = (JLabel) new DefaultListCellRenderer().getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             if (value instanceof Textbook textbook) {
@@ -183,32 +180,6 @@ public class OrderPanel extends JPanel {
             }
             return label;
         });
-
-        JTextField editor = (JTextField) textbookCombo.getEditor().getEditorComponent();
-        editor.getDocument().addDocumentListener(new SimpleDocumentAdapter(e -> SwingUtilities.invokeLater(this::filterCombo)));
-    }
-
-    private void filterCombo() {
-        if (filtering) {
-            return;
-        }
-        filtering = true;
-        JTextField editor = (JTextField) textbookCombo.getEditor().getEditorComponent();
-        String text = editor.getText().toLowerCase();
-        DefaultComboBoxModel<Textbook> model = new DefaultComboBoxModel<>();
-        for (Textbook textbook : textbooks) {
-            String label = (textbook.getTitle() + " " + textbook.getIsbn()).toLowerCase();
-            if (text.isBlank() || label.contains(text)) {
-                model.addElement(textbook);
-            }
-        }
-        textbookCombo.setModel(model);
-        textbookCombo.setSelectedItem(null);
-        editor.setText(text);
-        if (textbookCombo.isDisplayable() && textbookCombo.isShowing()) {
-            textbookCombo.setPopupVisible(true);
-        }
-        filtering = false;
     }
 
     private void refreshComboItems() {
