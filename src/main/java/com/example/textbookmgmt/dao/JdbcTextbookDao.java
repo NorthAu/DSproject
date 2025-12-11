@@ -12,7 +12,7 @@ public class JdbcTextbookDao implements TextbookDao {
 
     @Override
     public Textbook save(Textbook textbook) throws SQLException {
-        String sql = "INSERT INTO textbooks(title, author, publisher, publisher_id, type_id, isbn, stock) VALUES(?,?,?,?,?,?,?)";
+        String sql = "INSERT INTO textbooks(title, author, publisher, publisher_id, type_id, isbn, stock, price) VALUES(?,?,?,?,?,?,?,?)";
         try (Connection conn = DatabaseUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, textbook.getTitle());
@@ -30,6 +30,7 @@ public class JdbcTextbookDao implements TextbookDao {
             }
             ps.setString(6, textbook.getIsbn());
             ps.setInt(7, textbook.getStock());
+            ps.setBigDecimal(8, textbook.getPrice());
             ps.executeUpdate();
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
@@ -42,7 +43,7 @@ public class JdbcTextbookDao implements TextbookDao {
 
     @Override
     public Textbook update(Textbook textbook) throws SQLException {
-        String sql = "UPDATE textbooks SET title=?, author=?, publisher=?, publisher_id=?, type_id=?, isbn=?, stock=? WHERE id=?";
+        String sql = "UPDATE textbooks SET title=?, author=?, publisher=?, publisher_id=?, type_id=?, isbn=?, stock=?, price=? WHERE id=?";
         try (Connection conn = DatabaseUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, textbook.getTitle());
@@ -60,7 +61,8 @@ public class JdbcTextbookDao implements TextbookDao {
             }
             ps.setString(6, textbook.getIsbn());
             ps.setInt(7, textbook.getStock());
-            ps.setLong(8, textbook.getId());
+            ps.setBigDecimal(8, textbook.getPrice());
+            ps.setLong(9, textbook.getId());
             ps.executeUpdate();
             return textbook;
         }
@@ -121,7 +123,7 @@ public class JdbcTextbookDao implements TextbookDao {
     }
 
     private String baseSelectSql() {
-        return "SELECT t.id, t.title, t.author, t.publisher, t.publisher_id, t.type_id, t.isbn, t.stock, tt.name AS type_name " +
+        return "SELECT t.id, t.title, t.author, t.publisher, t.publisher_id, t.type_id, t.isbn, t.stock, t.price, tt.name AS type_name " +
                 "FROM textbooks t " +
                 "LEFT JOIN textbook_types tt ON t.type_id = tt.id";
     }
@@ -135,7 +137,8 @@ public class JdbcTextbookDao implements TextbookDao {
                 rs.getObject("publisher_id", Long.class),
                 rs.getObject("type_id", Long.class),
                 rs.getString("isbn"),
-                rs.getInt("stock")
+                rs.getInt("stock"),
+                rs.getBigDecimal("price")
         );
     }
 

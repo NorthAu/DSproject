@@ -41,8 +41,8 @@ public final class DatabaseUtil {
                     SELECT '计算机科学', '编程、算法与软件工程类教材' WHERE NOT EXISTS (SELECT 1 FROM textbook_types)
                     """);
             statement.executeUpdate("""
-                    INSERT INTO textbooks(title, author, publisher, publisher_id, type_id, isbn, stock)
-                    SELECT 'Java 核心技术', 'Cay S. Horstmann', '机械工业出版社', 1, 1, 'ISBN9787111547', 12
+                    INSERT INTO textbooks(title, author, publisher, publisher_id, type_id, isbn, stock, price)
+                    SELECT 'Java 核心技术', 'Cay S. Horstmann', '机械工业出版社', 1, 1, 'ISBN9787111547', 12, 88.00
                     WHERE NOT EXISTS (SELECT 1 FROM textbooks)
                     """);
             statement.executeUpdate("""
@@ -124,12 +124,15 @@ public final class DatabaseUtil {
                     publisher_id BIGINT,
                     type_id BIGINT,
                     isbn VARCHAR(50) NOT NULL,
-                    stock INT NOT NULL,
+                    stock INT NOT NULL CHECK (stock >= 0),
+                    price DECIMAL(10,2) NOT NULL DEFAULT 0,
                     CONSTRAINT chk_isbn_format CHECK (isbn LIKE 'ISBN__________'),
                     CONSTRAINT fk_textbooks_publisher FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE SET NULL,
                     CONSTRAINT fk_textbooks_type FOREIGN KEY (type_id) REFERENCES textbook_types(id) ON DELETE SET NULL
                 )
                 """);
+
+        statement.executeUpdate("ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS price DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER stock");
 
         statement.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS textbook_orders (

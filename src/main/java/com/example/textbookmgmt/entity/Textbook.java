@@ -12,6 +12,7 @@ public class Textbook {
     private String typeName;
     private String isbn;
     private int stock;
+    private java.math.BigDecimal price = java.math.BigDecimal.ZERO;
 
     public Textbook() {
     }
@@ -25,6 +26,11 @@ public class Textbook {
         this.typeId = typeId;
         this.isbn = isbn;
         this.stock = stock;
+    }
+
+    public Textbook(Long id, String title, String author, String publisher, Long publisherId, Long typeId, String isbn, int stock, java.math.BigDecimal price) {
+        this(id, title, author, publisher, publisherId, typeId, isbn, stock);
+        this.price = price;
     }
 
     public Textbook(String title, String author, String publisher, String isbn, int stock) {
@@ -105,6 +111,14 @@ public class Textbook {
 
     public void setStock(int stock) {
         this.stock = stock;
+    }
+
+    public java.math.BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(java.math.BigDecimal price) {
+        this.price = price;
     }
 
     @Override

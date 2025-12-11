@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TextbookTableModel extends AbstractTableModel {
-    private static final List<String> COLUMNS = List.of("ID", "书名", "作者", "出版社", "ISBN", "教材类型", "库存");
+    private static final List<String> COLUMNS = List.of("ID", "书名", "作者", "出版社", "ISBN", "教材类型", "库存", "价格(元)");
     private final List<Textbook> data = new ArrayList<>();
 
     @Override
@@ -36,6 +36,7 @@ public class TextbookTableModel extends AbstractTableModel {
             case 4 -> textbook.getIsbn();
             case 5 -> textbook.getTypeName();
             case 6 -> textbook.getStock();
+            case 7 -> textbook.getPrice();
             default -> "";
         };
     }
@@ -45,6 +46,7 @@ public class TextbookTableModel extends AbstractTableModel {
         return switch (columnIndex) {
             case 0 -> Long.class;
             case 6 -> Integer.class;
+            case 7 -> java.math.BigDecimal.class;
             default -> String.class;
         };
     }

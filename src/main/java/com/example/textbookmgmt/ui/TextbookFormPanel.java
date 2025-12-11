@@ -16,6 +16,7 @@ public class TextbookFormPanel extends JPanel {
     private final JComboBox<TextbookType> typeCombo = new JComboBox<>();
     private final JTextField isbnField = new JTextField();
     private final JSpinner stockSpinner = new JSpinner(new SpinnerNumberModel(1, 0, 10_000, 1));
+    private final JSpinner priceSpinner = new JSpinner(new SpinnerNumberModel(0.00, 0.00, 1_000_000.00, 0.50));
 
     public TextbookFormPanel() {
         super(new GridBagLayout());
@@ -27,6 +28,7 @@ public class TextbookFormPanel extends JPanel {
         authorField.setColumns(12);
         publisherField.setColumns(12);
         isbnField.setColumns(12);
+        priceSpinner.setEditor(new JSpinner.NumberEditor(priceSpinner, "0.00"));
 
         addLabeledField("书名", titleField, 0, 0);
         addLabeledField("作者", authorField, 1, 0);
@@ -39,6 +41,7 @@ public class TextbookFormPanel extends JPanel {
         addLabeledField("ISBN", isbnField, 0, 1);
         addLabeledField("库存", stockSpinner, 1, 1);
         addLabeledField("教材类型", typeCombo, 2, 1);
+        addLabeledField("价格(元)", priceSpinner, 3, 1);
 
         JLabel hint = new JLabel("提示：选中表格行后可自动填充表单，并可直接修改保存。");
         hint.setForeground(new Color(70, 70, 70));
@@ -81,10 +84,12 @@ public class TextbookFormPanel extends JPanel {
         String publisher = publisherField.getText().trim();
         String isbn = isbnField.getText().trim();
         int stock = (Integer) stockSpinner.getValue();
+        java.math.BigDecimal price = java.math.BigDecimal.valueOf(((Number) priceSpinner.getValue()).doubleValue());
 
         Textbook textbook = id == null
                 ? new Textbook(title, author, publisher, isbn, stock)
                 : new Textbook(id, title, author, publisher, isbn, stock);
+        textbook.setPrice(price);
 
         Publisher selectedPublisher = (Publisher) publisherCombo.getSelectedItem();
         TextbookType selectedType = (TextbookType) typeCombo.getSelectedItem();
@@ -106,6 +111,7 @@ public class TextbookFormPanel extends JPanel {
         publisherField.setText(textbook.getPublisher());
         isbnField.setText(textbook.getIsbn());
         stockSpinner.setValue(textbook.getStock());
+        priceSpinner.setValue(textbook.getPrice() == null ? 0.00 : textbook.getPrice().doubleValue());
 
         selectComboById(publisherCombo, textbook.getPublisherId());
         selectComboById(typeCombo, textbook.getTypeId());
@@ -117,6 +123,7 @@ public class TextbookFormPanel extends JPanel {
         publisherField.setText("");
         isbnField.setText("");
         stockSpinner.setValue(1);
+        priceSpinner.setValue(0.00);
         publisherCombo.setSelectedItem(null);
         typeCombo.setSelectedItem(null);
     }

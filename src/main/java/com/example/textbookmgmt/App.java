@@ -28,7 +28,7 @@ public class App {
         PublisherService publisherService = new PublisherService(publisherDao);
         TextbookTypeService typeService = new TextbookTypeService(typeDao);
         TextbookOrderService orderService = new TextbookOrderService(orderDao);
-        InventoryService inventoryService = new InventoryService(inventoryDao);
+        InventoryService inventoryService = new InventoryService(inventoryDao, textbookDao);
 
         SwingUtilities.invokeLater(() -> {
             TextbookManagementFrame frame = new TextbookManagementFrame(service, publisherService, typeService, orderService, inventoryService);

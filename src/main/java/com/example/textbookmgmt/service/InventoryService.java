@@ -1,6 +1,8 @@
 package com.example.textbookmgmt.service;
 
 import com.example.textbookmgmt.dao.InventoryTransactionDao;
+import com.example.textbookmgmt.dao.TextbookDao;
+import com.example.textbookmgmt.entity.Textbook;
 import com.example.textbookmgmt.entity.InventoryTransaction;
 
 import java.sql.SQLException;
@@ -9,14 +11,17 @@ import java.util.List;
 
 public class InventoryService {
     private final InventoryTransactionDao dao;
+    private final TextbookDao textbookDao;
 
-    public InventoryService(InventoryTransactionDao dao) {
+    public InventoryService(InventoryTransactionDao dao, TextbookDao textbookDao) {
         this.dao = dao;
+        this.textbookDao = textbookDao;
     }
 
     public InventoryTransaction record(InventoryTransaction transaction) {
         validate(transaction);
         try {
+            guardAgainstStockExhaustion(transaction);
             return dao.save(transaction);
         } catch (SQLException e) {
             throw new RuntimeException("无法保存库存流水", e);
@@ -43,6 +48,18 @@ public class InventoryService {
         }
         if (transaction.getOccurredAt() == null) {
             transaction.setOccurredAt(LocalDateTime.now());
+        }
+    }
+
+    private void guardAgainstStockExhaustion(InventoryTransaction transaction) throws SQLException {
+        if (!"OUT".equals(transaction.getDirection())) {
+            return;
+        }
+        Textbook textbook = textbookDao.findById(transaction.getTextbookId())
+                .orElseThrow(() -> new IllegalArgumentException("教材不存在，请刷新后重试"));
+        int remaining = textbook.getStock() - transaction.getQuantity();
+        if (remaining <= 0) {
+            throw new IllegalArgumentException("库存不足，此次出库后库存会降到 0，请调整数量");
         }
     }
 }

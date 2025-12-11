@@ -3,6 +3,7 @@ package com.example.textbookmgmt.service;
 import com.example.textbookmgmt.dao.TextbookDao;
 import com.example.textbookmgmt.entity.Textbook;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,7 @@ public class TextbookService {
                 merged.setPublisher(textbook.getPublisher());
                 merged.setPublisherId(textbook.getPublisherId());
                 merged.setTypeId(textbook.getTypeId());
+                merged.setPrice(textbook.getPrice());
                 merged.setStock(Math.max(0, merged.getStock()) + textbook.getStock());
                 return textbookDao.update(merged);
             }
@@ -79,6 +81,10 @@ public class TextbookService {
         }
         if (textbook.getStock() < 0) {
             throw new IllegalArgumentException("库存必须大于等于 0");
+        }
+        BigDecimal price = textbook.getPrice();
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("价格必须大于等于 0");
         }
         if (!ISBN_PATTERN.matcher(textbook.getIsbn()).matches()) {
             throw new IllegalArgumentException("ISBN 格式必须以ISBN开头，后跟10位数字，例如：ISBN1234567890");
