@@ -132,6 +132,8 @@ public final class DatabaseUtil {
                 )
                 """);
 
+        statement.executeUpdate("ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS publisher_id BIGINT AFTER publisher");
+        statement.executeUpdate("ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS type_id BIGINT AFTER publisher_id");
         statement.executeUpdate("ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS price DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER stock");
 
         statement.executeUpdate("""
@@ -146,6 +148,9 @@ public final class DatabaseUtil {
                     CONSTRAINT fk_orders_textbook FOREIGN KEY (textbook_id) REFERENCES textbooks(id) ON DELETE CASCADE
                 )
                 """);
+
+        statement.executeUpdate("ALTER TABLE textbook_orders ADD COLUMN IF NOT EXISTS arrived_quantity INT DEFAULT 0 AFTER quantity");
+        statement.executeUpdate("ALTER TABLE textbook_orders ADD COLUMN IF NOT EXISTS arrival_date DATE AFTER ordered_date");
 
         statement.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS inventory_transactions (
