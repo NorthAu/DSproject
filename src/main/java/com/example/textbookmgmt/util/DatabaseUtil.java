@@ -28,7 +28,7 @@ public final class DatabaseUtil {
         ensureDatabaseExists();
         try (Connection connection = getConnection();
              Statement statement = connection.createStatement()) {
-            createCoreTables(statement);
+            createCoreTables(connection, statement);
             createTriggers(statement);
             createStoredProcedures(statement);
 
@@ -98,7 +98,7 @@ public final class DatabaseUtil {
         return base;
     }
 
-    private static void createCoreTables(Statement statement) throws SQLException {
+    private static void createCoreTables(Connection connection, Statement statement) throws SQLException {
         statement.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS publishers (
                     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -132,9 +132,9 @@ public final class DatabaseUtil {
                 )
                 """);
 
-        statement.executeUpdate("ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS publisher_id BIGINT AFTER publisher");
-        statement.executeUpdate("ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS type_id BIGINT AFTER publisher_id");
-        statement.executeUpdate("ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS price DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER stock");
+        addColumnIfMissing(connection, "textbooks", "publisher_id BIGINT");
+        addColumnIfMissing(connection, "textbooks", "type_id BIGINT");
+        addColumnIfMissing(connection, "textbooks", "price DECIMAL(10,2) NOT NULL DEFAULT 0");
 
         statement.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS textbook_orders (
@@ -149,8 +149,8 @@ public final class DatabaseUtil {
                 )
                 """);
 
-        statement.executeUpdate("ALTER TABLE textbook_orders ADD COLUMN IF NOT EXISTS arrived_quantity INT DEFAULT 0 AFTER quantity");
-        statement.executeUpdate("ALTER TABLE textbook_orders ADD COLUMN IF NOT EXISTS arrival_date DATE AFTER ordered_date");
+        addColumnIfMissing(connection, "textbook_orders", "arrived_quantity INT DEFAULT 0");
+        addColumnIfMissing(connection, "textbook_orders", "arrival_date DATE");
 
         statement.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS inventory_transactions (
@@ -195,6 +195,22 @@ public final class DatabaseUtil {
                     GROUP BY t.id, t.title;
                 END
                 """);
+    }
+
+    private static void addColumnIfMissing(Connection connection, String tableName, String columnDefinition) throws SQLException {
+        String columnName = columnDefinition.split(" ")[0];
+        if (columnExists(connection, tableName, columnName)) {
+            return;
+        }
+        try (Statement alter = connection.createStatement()) {
+            alter.executeUpdate("ALTER TABLE " + tableName + " ADD COLUMN " + columnDefinition);
+        }
+    }
+
+    private static boolean columnExists(Connection connection, String tableName, String columnName) throws SQLException {
+        try (var rs = connection.getMetaData().getColumns(connection.getCatalog(), null, tableName, columnName)) {
+            return rs.next();
+        }
     }
 
     private static String resolveJdbcUrl() {
